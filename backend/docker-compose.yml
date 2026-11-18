@@ -1,0 +1,37 @@
+# Nombre propio para no mezclarse con los contenedores de tu otro proyecto "backend"
+name: minimarket
+
+services:
+  api:
+    build: .
+    ports:
+      - "3002:3002"
+    environment:
+      PORT: 3002
+      # Usa la MongoDB del contenedor "mongo"
+      MONGODB_URI: mongodb://mongo:27017/minimarket
+      # Secreto para firmar los tokens. Se lee del archivo .env (que NO se sube a GitHub)
+      JWT_SECRET: ${JWT_SECRET:?Falta JWT_SECRET en el archivo .env}
+      # Páginas que pueden usar la API:
+      # la tienda (Live Server usa el 5500) y el panel de admin (Vite usa el 5173)
+      FRONTEND_URL: http://localhost:5500,http://127.0.0.1:5500,http://localhost:5173
+    depends_on:
+      mongo:
+        condition: service_healthy # espera a que Mongo esté listo
+    restart: unless-stopped # si se cae, Docker lo vuelve a encender
+
+  mongo:
+    image: mongo:7
+    ports:
+      - "27018:27017" # 27018 en tu PC, para no chocar con la Mongo del otro proyecto
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  mongo-data:
